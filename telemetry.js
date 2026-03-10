@@ -18,7 +18,7 @@ function main() {
     context.subscribe('interval.day', function () {
         var enabled = context.sharedStorage.get('TelemetryPlugin.enabled');
         var endpoint = context.sharedStorage.get('TelemetryPlugin.endpoint');
-        if (enabled === 'false' || endpoint !== currentEndpoint) {
+        if (enabled === 'false' || endpoint !== currentEndpoint || failed) {
             tryStart();
         }
     });
