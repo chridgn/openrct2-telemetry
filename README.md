@@ -13,6 +13,9 @@ context.sharedStorage.set('TelemetryPlugin.endpoint', <endpoint: str>);
 
 # To disable the plugin without uninstall, set:
 context.sharedStorage.set('TelemetryPlugin.enabled', 'false');
+
+# Enable sending event payload to STDOUT
+context.sharedStorage.set('TelemetryPlugin.debug', 'true');
 ```
 
 ## Endpoint Setup
