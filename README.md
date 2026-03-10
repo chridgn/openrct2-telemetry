@@ -2,14 +2,16 @@
 
 Emits in-game events to a local HTTP endpoint by hooking into `action.execute` and sending a POST for every event. 
 
-## Configuration
-Set the following via in-game console:
-```
-context.sharedStorage.set('TelemetryPlugin.endpoint', <endpoint: str>);
-```
+In order to use/configure this plugin, start the game via openrct2.com (not .exe) in order to have access to the scripting console and monitor STDOUT.
 
-To disable the plugin without uninstall, set:
+## Configuration
+The following variables can be configured via the console that is launched alongside openrct2.com.
+
 ```
+# To set the endpoint
+context.sharedStorage.set('TelemetryPlugin.endpoint', <endpoint: str>);
+
+# To disable the plugin without uninstall, set:
 context.sharedStorage.set('TelemetryPlugin.enabled', 'false');
 ```
 
