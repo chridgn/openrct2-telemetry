@@ -3,6 +3,7 @@
 //
 // Configuration (set via the in-game console):
 //   context.sharedStorage.set('TelemetryPlugin.endpoint', 'localhost:8080/topics/openrct2');
+//   context.sharedStorage.set('TelemetryPlugin.enabled', 'false');  // disable without uninstalling
 //
 // The endpoint must be a localhost address. Use a local relay to forward to external services.
 // The watchdog checks once per in-game day for config changes or to recover from failures.
@@ -15,8 +16,9 @@ function main() {
     tryStart();
 
     context.subscribe('interval.day', function () {
+        var enabled = context.sharedStorage.get('TelemetryPlugin.enabled');
         var endpoint = context.sharedStorage.get('TelemetryPlugin.endpoint');
-        if (endpoint !== currentEndpoint) {
+        if (enabled === 'false' || endpoint !== currentEndpoint) {
             tryStart();
         }
     });
@@ -28,6 +30,12 @@ function tryStart() {
         subscription = null;
     }
     failed = false;
+
+    var enabled = context.sharedStorage.get('TelemetryPlugin.enabled');
+    if (enabled === 'false') {
+        console.log('[Telemetry] Disabled via TelemetryPlugin.enabled.');
+        return;
+    }
 
     var endpoint = context.sharedStorage.get('TelemetryPlugin.endpoint');
     currentEndpoint = endpoint;
