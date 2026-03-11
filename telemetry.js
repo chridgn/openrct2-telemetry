@@ -1,5 +1,5 @@
 // OpenRCT2 Telemetry Plugin
-// Hooks into action.execute and POSTs each event to a configured local HTTP endpoint.
+// Polls daily metrics and POSTs a snapshot to a configured local HTTP endpoint.
 //
 // Configuration (set via the in-game console):
 //   context.sharedStorage.set('TelemetryPlugin.endpoint', 'localhost:8080/topics/openrct2');
@@ -23,6 +23,40 @@ function main() {
             tryStart();
         }
     });
+}
+
+function getAverageCash() {
+    var guests = map.getAllEntities('guest');
+    if (guests.length === 0) return 0;
+    var total = guests.reduce(function (sum, g) { return sum + g.cash; }, 0);
+    return total / guests.length;
+}
+
+function getAverageHappiness() {
+    var guests = map.getAllEntities('guest');
+    if (guests.length === 0) return 0;
+    var total = guests.reduce(function (sum, g) { return sum + g.happiness; }, 0);
+    // hook returns 0-255 value; normalizing for readability
+    return (total / guests.length) / 255 * 100;
+}
+
+function getParkRating() {
+    return park.rating; // 0–999, no calculation needed
+}
+
+function getAverageRideDowntime() {
+    var rides = map.rides;
+    if (rides.length === 0) return 0;
+    var total = rides.reduce(function (sum, r) { return sum + r.downtime; }, 0);
+    return total / rides.length; // 0-100 percentage; higher = less reliable
+}
+
+function getAverageRideSatisfaction() {
+    var rides = map.rides.filter(function (r) { return r.status === 'open'; });
+    if (rides.length === 0) return 0;
+    var total = rides.reduce(function (sum, r) { return sum + r.satisfaction; }, 0);
+    // satisfaction is 0-255; normalizing for readability
+    return (total / rides.length) / 255 * 100;
 }
 
 function tryStart() {
@@ -53,16 +87,18 @@ function tryStart() {
         return;
     }
 
-    subscription = context.subscribe('action.execute', function (e) {
+    subscription = context.subscribe('interval.day', function (e) {
         if (failed) return;
         var payload = {
             tick: date.ticksElapsed,
-            action: e.action,
-            player: e.player,
-            type: e.type,
-            isClientOnly: e.isClientOnly,
-            args: e.args,
-            result: e.result
+            type: 'daily_snapshot',
+            metrics: {
+                averageCash: getAverageCash(),
+                averageHappiness: getAverageHappiness(),
+                parkRating: getParkRating(),
+                averageRideDowntime: getAverageRideDowntime(),
+                averageRideSatisfaction: getAverageRideSatisfaction()
+            }
         };
         if (context.sharedStorage.get('TelemetryPlugin.debug') === 'true') {
             console.log('[Telemetry] ' + JSON.stringify(payload));
@@ -75,7 +111,7 @@ function tryStart() {
         });
     });
 
-    console.log('[Telemetry] Started. Posting action events to ' + endpoint);
+    console.log('[Telemetry] Started. Posting daily snapshots to ' + endpoint);
 }
 
 function parseEndpoint(endpoint) {
@@ -102,20 +138,6 @@ function postEvent(endpoint, payload, onFailure) {
     ].join('\r\n');
 
     var socket = network.createSocket();
-    var response = '';
-
-    socket.on('data', function (data) {
-        response += data;
-    });
-
-    socket.on('close', function (hadError) {
-        if (hadError) return; // error event already fired
-        var match = response.match(/^HTTP\/\d+\.\d+\s+(\d+)/);
-        var status = match ? parseInt(match[1], 10) : 0;
-        if (status < 200 || status > 299) {
-            onFailure('endpoint returned HTTP ' + (status || 'unknown'));
-        }
-    });
 
     socket.on('error', function (err) {
         onFailure('socket error: ' + err);
@@ -123,7 +145,6 @@ function postEvent(endpoint, payload, onFailure) {
 
     socket.connect(endpoint.port, endpoint.host, function () {
         socket.write(request);
-        socket.end();
     });
 }
 
