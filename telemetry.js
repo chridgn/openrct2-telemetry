@@ -176,7 +176,6 @@ function getEnvironmentMetrics() {
     return {
         weather: climate.current.weather,
         temperature: climate.current.temperature,
-        windSpeed: climate.current.windSpeed,
         month: date.month,
         year: date.year
     };
