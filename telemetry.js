@@ -1,15 +1,17 @@
 // OpenRCT2 Telemetry Plugin
-// Polls daily metrics and POSTs a snapshot to a configured local HTTP endpoint.
+// Polls metrics on a configurable real-time interval and POSTs a snapshot to a configured local HTTP endpoint.
 //
 // Configuration (set via the in-game console):
 //   context.sharedStorage.set('TelemetryPlugin.endpoint', 'localhost:8080/topics/openrct2');
 //   context.sharedStorage.set('TelemetryPlugin.enabled', 'false');  // disable without uninstalling
-//   context.sharedStorage.set('TelemetryPlugin.debug', 'true');    // log each event to stdout
+//   context.sharedStorage.set('TelemetryPlugin.debug', 'true');     // log each event to stdout
+//   context.sharedStorage.set('TelemetryPlugin.pollInterval', 5000); // poll interval in milliseconds (default: 5000)
 //
 // The endpoint must be a localhost address. Use a local relay to forward to external services.
 // The watchdog checks once per in-game day for config changes or to recover from failures.
 
 var currentEndpoint = null;
+var currentPollInterval = null;
 var subscription = null;
 var failed = false;
 
@@ -19,7 +21,8 @@ function main() {
     context.subscribe('interval.day', function () {
         var enabled = context.sharedStorage.get('TelemetryPlugin.enabled');
         var endpoint = context.sharedStorage.get('TelemetryPlugin.endpoint');
-        if (enabled === 'false' || endpoint !== currentEndpoint || failed) {
+        var pollInterval = context.sharedStorage.get('TelemetryPlugin.pollInterval') || 5000;
+        if (enabled === 'false' || endpoint !== currentEndpoint || pollInterval !== currentPollInterval || failed) {
             tryStart();
         }
     });
@@ -61,7 +64,7 @@ function getAverageRideSatisfaction() {
 
 function tryStart() {
     if (subscription) {
-        subscription.dispose();
+        context.clearInterval(subscription);
         subscription = null;
     }
     failed = false;
@@ -87,11 +90,14 @@ function tryStart() {
         return;
     }
 
-    subscription = context.subscribe('interval.day', function (e) {
+    var pollInterval = context.sharedStorage.get('TelemetryPlugin.pollInterval') || 5000;
+    currentPollInterval = pollInterval;
+
+    subscription = context.setInterval(function () {
         if (failed) return;
         var payload = {
             tick: date.ticksElapsed,
-            type: 'daily_snapshot',
+            type: 'snapshot',
             metrics: {
                 averageCash: getAverageCash(),
                 averageHappiness: getAverageHappiness(),
@@ -107,11 +113,11 @@ function tryStart() {
             if (failed) return;
             failed = true;
             console.log('[Telemetry] Stopped: ' + reason);
-            subscription.dispose();
+            context.clearInterval(subscription);
         });
-    });
+    }, pollInterval);
 
-    console.log('[Telemetry] Started. Posting daily snapshots to ' + endpoint);
+    console.log('[Telemetry] Started. Posting snapshots every ' + pollInterval + 'ms to ' + endpoint);
 }
 
 function parseEndpoint(endpoint) {
