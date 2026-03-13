@@ -116,9 +116,7 @@ function getGuestSegmentation() {
 
 function getRevenueMetrics() {
     return {
-        rideIncome: park.totalRideIncomeThisMonth,
-        shopIncome: park.totalFoodDrinkIncomeThisMonth,
-        admissionsIncome: park.totalAdmissionsIncomeThisMonth,
+        totalIncomeFromAdmissions: park.totalIncomeFromAdmissions,
         entranceFee: park.entranceFee,
         totalAdmissions: park.totalAdmissions,
         cash: park.cash,
@@ -222,6 +220,10 @@ function tryStart() {
         var payload = {
             tick: date.ticksElapsed,
             type: 'snapshot',
+            park: {
+                name: park.name,
+                scenarioFilename: scenario.filename
+            },
             environment: getEnvironmentMetrics(),
             metrics: {
                 averageCash: getAverageCash(),
@@ -282,8 +284,23 @@ function postEvent(endpoint, payload, onFailure) {
     var socket = network.createSocket();
     var response = '';
 
+    var responseData = '';
+
     socket.on('error', function (err) {
         onFailure('socket error: ' + err);
+    });
+
+    socket.on('data', function (data) {
+        responseData += data;
+    });
+
+    socket.on('close', function () {
+        var statusMatch = responseData.match(/^HTTP\/1\.[01] (\d+)/);
+        var status = statusMatch ? parseInt(statusMatch[1], 10) : 0;
+        if (status < 200 || status >= 300) {
+            console.log('[Telemetry] Server responded ' + status + ': ' + responseData);
+            onFailure('HTTP ' + status);
+        }
     });
 
     socket.connect(endpoint.port, endpoint.host, function () {
