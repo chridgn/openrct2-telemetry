@@ -6,6 +6,7 @@
 //   eval context.sharedStorage.set('TelemetryPlugin.enabled', 'false');  // disable without uninstalling
 //   eval context.sharedStorage.set('TelemetryPlugin.debug', 'true');     // log each payload to stdout
 //   eval context.sharedStorage.set('TelemetryPlugin.pollInterval', 5000); // poll interval in ms (default: 5000)
+//   eval context.sharedStorage.set('TelemetryPlugin.activeWhileParkClosed', 'true'); // send telemetry even when park is closed (default: 'false')
 //
 // The endpoint must be a localhost address. Use a local relay to forward to external services.
 // The watchdog checks once per in-game day for config changes or to recover from failures.
@@ -216,6 +217,9 @@ function tryStart() {
 
     subscription = context.setInterval(function () {
         if (failed) return;
+        if (context.paused) return;
+        var activeWhileParkClosed = context.sharedStorage.get('TelemetryPlugin.activeWhileParkClosed');
+        if (!park.getFlag('open') && (!activeWhileParkClosed || activeWhileParkClosed === 'false')) return;
 
         var payload = {
             tick: date.ticksElapsed,

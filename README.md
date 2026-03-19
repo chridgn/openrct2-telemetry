@@ -186,6 +186,9 @@ eval context.sharedStorage.set('TelemetryPlugin.<key>', <value>);
 | `TelemetryPlugin.pollInterval` | `5000` | Poll interval in milliseconds |
 | `TelemetryPlugin.enabled` | *(enabled)* | Set to `'false'` to disable without uninstalling |
 | `TelemetryPlugin.debug` | *(off)* | Set to `'true'` to log each snapshot payload to STDOUT |
+| `TelemetryPlugin.activeWhileParkClosed` | `'false'` | Set to `'true'` to continue sending telemetry when the park is closed |
+
+NOTE: Telemetry is disabled while the game is paused.
 
 ## Endpoint Setup
 
@@ -193,4 +196,4 @@ For security purposes the endpoint must be a local HTTP server set to receive PO
 
 ## Troubleshooting
 
-If a socket error occurs, the plugin will stop sending. Every in-game day the watchdog checks for failures and retries — if the service has recovered, it will resume automatically. The watchdog also picks up any configuration changes (endpoint, poll interval, enabled state) without requiring a game restart.
+If a socket error occurs, the plugin will stop sending. Every in-game day the watchdog checks for failures and retries. If the service has recovered, it will resume automatically. The watchdog also picks up any configuration changes (endpoint, poll interval, enabled state) without requiring a game restart.
