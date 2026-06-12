@@ -273,13 +273,25 @@ function parseEndpoint(endpoint) {
     };
 }
 
+function utf8ByteLength(str) {
+    var len = 0;
+    for (var i = 0; i < str.length; i++) {
+        var code = str.charCodeAt(i);
+        if (code < 0x80) len += 1;
+        else if (code < 0x800) len += 2;
+        else if (code >= 0xD800 && code <= 0xDBFF) { len += 4; i++; }
+        else len += 3;
+    }
+    return len;
+}
+
 function postEvent(endpoint, payload, onFailure) {
     var body = JSON.stringify(payload);
     var request = [
         'POST ' + endpoint.path + ' HTTP/1.1',
         'Host: ' + endpoint.host + ':' + endpoint.port,
         'Content-Type: application/json',
-        'Content-Length: ' + body.length,
+        'Content-Length: ' + utf8ByteLength(body),
         'Connection: close',
         '',
         body
